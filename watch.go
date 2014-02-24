@@ -5,24 +5,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"reflect"
 	"time"
 )
 
-func getReflectArgs(args []string) []reflect.Value {
-	out := make([]reflect.Value, len(args))
-	for index := 0; index < len(args); index++ {
-		if index == 0 {
-			path, err := exec.LookPath(args[0])
-			if err != nil {
-				panic(err)
-			}
-			args[0] = path
-		}
-		out[index] = reflect.ValueOf(args[index])
-	}
-	return out
-}
 
 var interval *int
 
@@ -35,13 +20,13 @@ func main() {
 	if len(args) == 0 {
 		panic("You MUST supply a command to repeat")
 	}
-	command := reflect.ValueOf(exec.Command)
-	reflectArgs := getReflectArgs(args)
+	cmdName, err := exec.LookPath(args[0])
+	if err != nil {
+		log.Panicln("Command ",args[0]," not found in path")
+	}
 	log.Print("Running:", args, " every ", *interval, " seconds ")
 	for {
-		returns := command.Call(reflectArgs)
-		cmdPtr := returns[0].Interface()
-		cmd := cmdPtr.(*exec.Cmd)
+		cmd := exec.Command(cmdName,args[1:]...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		log.Print("Running:", args)
@@ -49,6 +34,7 @@ func main() {
 		if err != nil {
 			log.Print(err)
 		}
+		cmd.Wait()
 		time.Sleep(time.Second * time.Duration(*interval))
 	}
 }
